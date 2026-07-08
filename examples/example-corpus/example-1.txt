@@ -1,0 +1,3 @@
+This is the first example file in the OpenTrainingProvenance worked example corpus.
+It exists solely to demonstrate manifest computation and verification.
+No training utility. See ../manifest.example.json.

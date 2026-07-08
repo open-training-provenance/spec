@@ -1,0 +1,206 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://open-training-provenance.org/schema/manifest.v0.1.schema.json",
+  "title": "OpenTrainingProvenance Manifest v0.1",
+  "description": "JSON Schema for validating a v0.1 OpenTrainingProvenance manifest. See SPEC.md for the authoritative specification.",
+  "type": "object",
+  "required": [
+    "spec_version",
+    "manifest_id",
+    "corpus",
+    "publisher",
+    "claims",
+    "signature",
+    "timestamp"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "spec_version": {
+      "type": "string",
+      "const": "0.1",
+      "description": "Version of the OpenTrainingProvenance spec this manifest conforms to."
+    },
+    "manifest_id": {
+      "type": "string",
+      "pattern": "^urn:otp:[A-Z2-7]{26}$",
+      "description": "Deterministic manifest identifier — urn:otp:<first-26-chars-of-base32-sha256-of-unsigned-manifest>."
+    },
+    "corpus": {
+      "type": "object",
+      "required": ["corpus_hash", "hash_algorithm", "size_bytes", "file_count", "format", "description"],
+      "additionalProperties": false,
+      "properties": {
+        "corpus_hash": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "description": "Content hash of the corpus, prefixed with algorithm identifier."
+        },
+        "hash_algorithm": {
+          "type": "string",
+          "enum": ["otp-file-list-sha256-v1"],
+          "description": "Identifier for the hashing procedure used. v0.1 defines only otp-file-list-sha256-v1."
+        },
+        "size_bytes": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total size of the corpus in bytes."
+        },
+        "file_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of files in the corpus."
+        },
+        "format": {
+          "type": "string",
+          "description": "Human-readable format identifier (e.g., 'jsonl', 'parquet', 'mixed')."
+        },
+        "description": {
+          "type": "string",
+          "description": "Plain-English description of the corpus contents."
+        }
+      }
+    },
+    "publisher": {
+      "type": "object",
+      "required": ["public_key", "key_type"],
+      "additionalProperties": false,
+      "properties": {
+        "public_key": {
+          "type": "string",
+          "pattern": "^ed25519:[A-Za-z0-9+/=]+$",
+          "description": "Publisher's public key, prefixed with key type."
+        },
+        "key_type": {
+          "type": "string",
+          "enum": ["ed25519"],
+          "description": "Signature algorithm family."
+        },
+        "name": {
+          "type": "string",
+          "description": "Optional human-readable name of the publisher."
+        },
+        "contact": {
+          "type": "string",
+          "description": "Optional URL or identifier where the publisher can be reached."
+        }
+      }
+    },
+    "claims": {
+      "type": "object",
+      "description": "Publisher assertions — cryptographically bound to the manifest but not cryptographically true. See SPEC.md §8.",
+      "additionalProperties": true,
+      "properties": {
+        "license": {
+          "type": "object",
+          "required": ["spdx"],
+          "properties": {
+            "spdx": {
+              "type": "string",
+              "description": "SPDX license identifier. Use 'proprietary' or 'custom' for non-standard licenses and provide a url."
+            },
+            "url": {
+              "type": "string",
+              "format": "uri"
+            }
+          }
+        },
+        "jurisdiction": {
+          "type": "string",
+          "description": "ISO 3166-2 code where the publisher asserts they are producing this corpus."
+        },
+        "consent_statement": {
+          "type": "string"
+        },
+        "purpose": {
+          "type": "string",
+          "enum": ["training", "evaluation", "fine-tuning", "pretraining", "research", "other"]
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "contributors": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {"type": "string"},
+              "role": {"type": "string"}
+            }
+          }
+        },
+        "notes": {
+          "type": "string"
+        }
+      }
+    },
+    "signature": {
+      "type": ["object", "null"],
+      "properties": {
+        "algorithm": {
+          "type": "string",
+          "enum": ["ed25519"]
+        },
+        "value": {
+          "type": ["string", "null"],
+          "description": "Base64-encoded Ed25519 signature. Null during signing preparation."
+        },
+        "signed_over": {
+          "type": "string",
+          "enum": ["canonical-json-v1-excluding-signature-and-timestamp"]
+        }
+      },
+      "required": ["algorithm", "value", "signed_over"]
+    },
+    "timestamp": {
+      "type": ["object", "null"],
+      "properties": {
+        "algorithm": {
+          "type": "string",
+          "enum": ["opentimestamps"]
+        },
+        "ots_proof": {
+          "type": "string",
+          "description": "Base64-encoded .ots proof."
+        },
+        "anchored_hash": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "block_height": {
+          "type": ["integer", "null"],
+          "description": "Optional cached block height. Verifiers MUST recompute from the OTS proof."
+        },
+        "block_time": {
+          "type": ["string", "null"],
+          "format": "date-time",
+          "description": "Optional cached block time. Verifiers MUST recompute from the OTS proof."
+        }
+      },
+      "required": ["algorithm", "ots_proof", "anchored_hash"]
+    },
+    "links": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "corpus_url": {"type": "string"},
+        "corpus_mirror_urls": {
+          "type": "array",
+          "items": {"type": "string"}
+        },
+        "prior_version": {
+          "type": "string",
+          "pattern": "^urn:otp:[A-Z2-7]{26}$"
+        },
+        "contributor_manifests": {
+          "type": "array",
+          "items": {"type": "string"}
+        },
+        "downstream_models": {
+          "type": "array",
+          "items": {"type": "string"}
+        }
+      }
+    }
+  }
+}

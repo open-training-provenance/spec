@@ -1,0 +1,17 @@
+# Editor / OS junk
+.DS_Store
+.vscode/
+.idea/
+*.swp
+*~
+
+# Local test outputs
+/tmp/
+*.log
+
+# Reserved for reference-implementation work not yet in-scope
+node_modules/
+__pycache__/
+*.pyc
+.venv/
+venv/

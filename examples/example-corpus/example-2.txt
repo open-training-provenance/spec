@@ -1,0 +1,2 @@
+Second example file. Same purpose as example-1.txt.
+Included to show that multiple files are hashed in sorted-path order and combined into a single corpus hash.
