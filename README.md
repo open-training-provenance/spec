@@ -10,9 +10,9 @@ A minimal, honest primitive for making verifiable claims about AI training datas
 
 - **What** the corpus is (content hash over the sorted file list)
 - **Who** is publishing it (Ed25519 signature)
-- **When** the corpus was committed (OpenTimestamps proof, Bitcoin-anchored)
+- **When** the corpus was committed (timestamp anchor — OpenTimestamps, Bitcoin-backed)
 
-It explicitly documents the boundary between what's **cryptographically proven** and what's **socially trusted** — see [`docs/trust-model.md`](./docs/trust-model.md).
+**An OTP manifest is to an AI dataset what a Git commit is to source code.** A Git commit doesn't prove the code is *correct* — it proves exactly what was committed, by whom, and when. Likewise, an OTP manifest doesn't prove a model was trained on a dataset; it proves precisely which files a publisher committed to, under which key, and by when. What the publisher *claims about* those files (license, consent, jurisdiction) is their word — cryptographically bound to their key, but not proven true. That boundary between what's **cryptographically proven** and what's **socially trusted** is drawn explicitly in [`docs/trust-model.md`](./docs/trust-model.md), and it's the whole point.
 
 ## What this is not
 
