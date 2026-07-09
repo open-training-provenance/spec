@@ -2,13 +2,13 @@
 
 An open specification for cryptographically-committed provenance manifests for AI training data.
 
-**Status:** v0.1 draft — spec under active development. Read [`SPEC.md`](./SPEC.md).
+**Status:** v0.2 draft — spec under active development. Read [`SPEC.md`](./SPEC.md) and [`CHANGELOG.md`](./CHANGELOG.md). v0.2 is a spec-document revision over the unchanged 0.1 manifest wire format (manifests still carry `spec_version: "0.1"`).
 
 ## What this is
 
 A minimal, honest primitive for making verifiable claims about AI training datasets. A manifest cryptographically commits to:
 
-- **What** the corpus is (Merkle-style content hash)
+- **What** the corpus is (content hash over the sorted file list)
 - **Who** is publishing it (Ed25519 signature)
 - **When** the corpus was committed (OpenTimestamps proof, Bitcoin-anchored)
 
@@ -37,11 +37,11 @@ This spec inherits from the pre-blockchain provenance work — Haber & Stornetta
 
 ## Status and roadmap
 
-- **v0.1 (this document)** — core manifest structure, cryptographic primitives, trust boundary. Draft under active feedback.
-- **v0.2 (planned)** — Merkle-tree-based partial verification of subsets, nested corpora, publisher key rotation.
-- **Future** — integration points for TEE-attested training claims when H100 CC / TDX matures, integration with C2PA for downstream output signing, optional ZKML attestation layers when they become practical.
+- **v0.1** — initial public draft: core manifest structure, cryptographic primitives, trust boundary.
+- **v0.2 (this document)** — spec/implementation reconciliation: byte-exact corpus hash (§5), RFC 8785 canonicalization + no-floats (§6.1), the three-state computation order (§6.4), and the normative `anchored_hash` reconciliation (§7.2) that binds a timestamp proof to the manifest it attests. See [`CHANGELOG.md`](./CHANGELOG.md) for normative-vs-editorial detail.
+- **Future** — Merkle-tree partial verification of subsets, publisher key rotation/revocation, multi-signature manifests, nested/derived-dataset lineage, and extension protocols (TEE attestation, ZKML, proof-of-learning) as the underlying cryptography matures. Extensions add to the core; they never replace core fields.
 
-The spec is versioned and additive. v0.1 manifests will remain valid indefinitely; future versions layer on top rather than replace.
+The spec is versioned and additive. Existing manifests remain valid indefinitely; future versions layer on top rather than replace.
 
 ## Feedback
 

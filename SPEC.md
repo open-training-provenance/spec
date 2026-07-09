@@ -1,9 +1,11 @@
 # OpenTrainingProvenance Manifest Specification
 
-**Version:** 0.1 (draft)
+**Version:** 0.2 (draft)
 **Status:** Public draft, open for comment
-**Editor:** _(publisher name here)_
+**Editor:** OpenTrainingProvenance
 **License:** MIT
+
+> **v0.2 note.** This is a spec-document revision over the **unchanged 0.1 manifest wire format**. It adds two normative requirements — the §7.2 `anchored_hash` reconciliation (a new verification obligation that closes the "attach someone else's valid timestamp" hole) and the §6.1.1 no-floating-point constraint — plus editorial byte-exactness clarifications (§5, §6.1, §6.4) and anchor-agnostic vocabulary (§7). Manifests continue to carry `spec_version: "0.1"` because the wire format and parser are unchanged; see §11 and [CHANGELOG.md](./CHANGELOG.md).
 
 ## Abstract
 
@@ -42,7 +44,7 @@ The spec is what these primitives compose into when applied to AI training data.
 
 **Verifier.** Any party inspecting a manifest to check its cryptographic validity and the publisher's claims.
 
-**Corpus hash.** The Merkle-style content hash of the corpus, computed as defined in §5.
+**Corpus hash.** The content hash of the corpus (a SHA-256 over the sorted file list), computed as defined in §5.
 
 **Manifest signature.** An Ed25519 signature by the publisher over the canonical serialization of the manifest, computed as defined in §6.
 
@@ -67,11 +69,11 @@ A manifest is a JSON object with the following top-level fields:
 
 ### 3.1 `spec_version`
 
-String. The spec version this manifest conforms to. For manifests conforming to this document, always `"0.1"`.
+String. The **wire-format** version the manifest conforms to — always `"0.1"` for manifests conforming to this document. Note this is distinct from the spec-*document* version in the header (currently 0.2): the document version advances when the spec adds verification requirements or clarifications, while `spec_version` changes only when the manifest byte layout or parser changes. See §11.
 
 ### 3.2 `manifest_id`
 
-String. A URN of the form `urn:otp:<base32>` where `<base32>` is the first 26 characters of the base32-encoded SHA-256 hash of the canonical manifest bytes (see §6.1) with the `signature` and `timestamp` fields set to `null`. Deterministic — the same manifest content always produces the same ID.
+String. A URN of the form `urn:otp:<base32>` where `<base32>` is the first 26 characters of the RFC 4648 base32 encoding (uppercase alphabet `A–Z2–7`, no padding) of the SHA-256 digest of the canonical manifest bytes (see §6.1) with the `manifest_id`, `signature`, and `timestamp` fields all set to `null`. Because `manifest_id` is itself nulled in the bytes it commits to, the derivation is well-defined and non-circular. Deterministic — the same manifest content always produces the same ID. The exact assembly order is given in §6.4.
 
 ### 3.3 `corpus`
 
@@ -200,18 +202,46 @@ See [`examples/manifest.example.json`](./examples/manifest.example.json) for a w
 
 ## 5. Corpus hash algorithm (`otp-file-list-sha256-v1`)
 
-To compute the corpus hash:
+The corpus hash commits to the content and layout of every file in the corpus. It is computed as follows.
 
-1. Enumerate every file in the corpus as a relative path from the corpus root. Paths use forward slashes and are normalized (no `..`, no leading `/`, Unicode NFC).
-2. For each file, compute its SHA-256 hash.
-3. Build a list of tab-separated `<hex-sha256>\t<relative-path>\n` records, one per line, sorted lexicographically by relative path.
-4. Compute SHA-256 over the concatenated bytes of that list (no trailing newline beyond the final record).
+1. Enumerate every file in the corpus and express its location as a relative path from the corpus root. Paths use forward slashes (`/`) as separators, contain no `.` or `..` segments and no leading `/`, and are encoded as UTF-8 in Unicode Normalization Form C (NFC).
+2. For each file, compute the SHA-256 digest of its raw bytes and encode that digest as a lowercase, 64-character hexadecimal string.
+3. For each file, build a **record** consisting of exactly these bytes, in order, with no other bytes:
+   - the 64 ASCII bytes of the lowercase hex digest;
+   - one horizontal-tab byte (`0x09`);
+   - the UTF-8 bytes of the relative path;
+   - one line-feed byte (`0x0A`).
+4. Sort the records by relative path, comparing paths as raw UTF-8 byte sequences (bytewise — not locale-aware and not case-folded).
+5. Concatenate the sorted records in order, with nothing added or removed between or after them. Every record — including the final one — retains its own terminating line-feed byte; no separator is inserted between records and none is stripped from the last.
+6. Compute the SHA-256 digest of the concatenated byte sequence. The `corpus_hash` is that digest as a lowercase hex string prefixed with `sha256:`.
 
-The resulting hash is the `corpus_hash`.
+### 5.1 Worked byte-level example
 
-This procedure is deliberately simple. It commits to the entire corpus content and layout. A verifier who has the corpus can independently reproduce the hash. A future spec version will add a Merkle-tree variant supporting proofs of individual file membership without downloading the whole corpus.
+The three-file corpus in [`examples/example-corpus/`](./examples/example-corpus/) yields these per-file digests:
 
-**Rationale:** avoiding IPFS CIDs, tarball hashing, and full Merkle trees in v0.1 keeps the primitive dependency-free and inspectable with a shell one-liner.
+| Relative path | SHA-256 of file bytes |
+|---|---|
+| `README.md` | `9ca0c10f2cc1a0865f9bf3ff9f01c620c2cd4397304f5a18a61aec12f1f2733a` |
+| `example-1.txt` | `1084853246a01090c66ee3ebc471a80eff0039eff91ac1d780084abe1bfdb30d` |
+| `example-2.txt` | `0ca7a97688901c0f5f9f1e485c49b921fd587b350fe83af9dadf5ff4b576e7e4` |
+
+Sorted by path — `README.md` precedes `example-…` because `R` (`0x52`) sorts before `e` (`0x65`) — the concatenated bytes are the following, where `⇥` denotes the tab byte `0x09` and `␤` denotes the line-feed byte `0x0A` (there is no line break inside the stream; it is one continuous sequence):
+
+```
+9ca0c10f2cc1a0865f9bf3ff9f01c620c2cd4397304f5a18a61aec12f1f2733a⇥README.md␤1084853246a01090c66ee3ebc471a80eff0039eff91ac1d780084abe1bfdb30d⇥example-1.txt␤0ca7a97688901c0f5f9f1e485c49b921fd587b350fe83af9dadf5ff4b576e7e4⇥example-2.txt␤
+```
+
+The SHA-256 of those bytes is `f912628de77e191ffe14eb4a8f4cbd14acb708e2de10f5ca45956393438f18c4`, so:
+
+```
+corpus_hash = "sha256:f912628de77e191ffe14eb4a8f4cbd14acb708e2de10f5ca45956393438f18c4"
+```
+
+which matches [`examples/manifest.example.json`](./examples/manifest.example.json).
+
+This procedure is deliberately simple. It commits to the entire corpus content and layout, and a verifier who holds the corpus can reproduce the hash with standard tools. A future spec version will add a Merkle-tree variant supporting proofs of individual file membership without downloading the whole corpus.
+
+**Rationale:** avoiding IPFS CIDs, tarball hashing, and full Merkle trees in this version keeps the primitive dependency-free and inspectable with a shell one-liner.
 
 ## 6. Canonicalization and signing
 
@@ -219,41 +249,63 @@ Manifests are signed and hashed over a **canonical** JSON serialization defined 
 
 ### 6.1 Canonical serialization
 
-The canonical form of a manifest is derived by:
+Manifests are hashed and signed over a single, deterministic byte serialization so that two independent implementations produce identical bytes for the same manifest content. The canonical serialization is **RFC 8785 (JSON Canonicalization Scheme, JCS)**, subject to the additional constraints in §6.1.1. A conformant implementation MUST produce byte-for-byte identical output to RFC 8785 for every manifest it emits or verifies.
 
-1. Taking the manifest as a JSON object.
-2. Recursively sorting all object keys in lexicographic (byte-wise) order.
-3. Serializing with:
-   - No whitespace between tokens
-   - UTF-8 encoding
-   - Numbers in shortest-form representation with no exponent when possible
-   - Strings escaped per RFC 8259 with minimal escaping (only `\"`, `\\`, `\/` optional, control characters `\uXXXX`)
-   - `null` for absent optional fields (as opposed to omission)
+Informally, RFC 8785 requires: UTF-8 encoding; recursive lexicographic (UTF-16 code-unit) sorting of object member names; no insignificant whitespace; strings escaped per RFC 8259 in shortest form (only `"`, `\`, and the C0 control characters are escaped — the forward slash `/` is **not** escaped); and a fixed number serialization.
 
-This is equivalent to RFC 8785 (JSON Canonicalization Scheme) for the subset of JSON this spec uses.
+#### 6.1.1 Number and field constraints
+
+To keep canonicalization fully deterministic without a floating-point serializer — and to preserve the ability to inspect a manifest with ordinary command-line tools — a conformant manifest is further constrained:
+
+- **No floating-point numbers.** Every JSON number in a manifest MUST be an integer in the range 0 … 2⁵³−1 (`size_bytes`, `file_count`, `block_height`, and any future numeric field). Manifests MUST NOT contain fractional or exponent-form numbers. Integers are serialized as their minimal decimal form with no leading zeros, no sign, and no exponent — which is exactly what RFC 8785 produces for integers in this range. The JSON Schema constrains the known numeric fields to integers, but cannot express this rule for the open `claims` and `links` objects; a conformant implementation therefore MUST reject any non-integer number anywhere in a manifest at sign and verify time.
+- **Absent optional fields are omitted, not nulled.** An optional field carrying no value is simply absent from the object; it is neither present as `null` nor otherwise materialized. The only fields explicitly set to `null` during a computation are `manifest_id`, `signature`, and `timestamp`, as defined in §3.2, §6.2, §6.4, and §7.1 — these are *present-but-null*, not absent.
+- **Object keys are ASCII.** All object member names in a manifest — including keys inside the open `claims` and `links` objects — are expected to be ASCII. RFC 8785 orders member names by UTF-16 code unit; for ASCII keys this equals byte order. Because every field this spec defines is ASCII, a conformant implementation MAY reject a manifest containing a non-ASCII object key rather than implement full UTF-16 ordering — failing loud rather than risk emitting non-JCS bytes. (The reference implementation rejects them.)
+
+> **Design note.** Because a manifest contains no floating-point values, its canonical form is fully determined by JCS's integer and string rules alone; none of JCS's floating-point machinery (shortest round-trip / Ryū) is exercised. This is deliberate: it keeps a manifest reproducible with a small script plus a SHA-256 utility, without a full JCS library, while remaining a strict subset of RFC 8785. Contrast with formats that carry fractional fields (e.g. a proportional-weighting value), which cannot avoid the full JCS number algorithm.
 
 ### 6.2 Signature computation
 
-To compute the manifest signature:
+To compute the manifest signature (after `manifest_id` has been derived per §6.4):
 
-1. Take the manifest.
-2. Set `signature.value` to `null` and `timestamp` (entire object) to `null`.
+1. Take the manifest with `manifest_id` populated.
+2. Set the entire `signature` field and the entire `timestamp` field to `null`.
 3. Compute the canonical serialization per §6.1.
 4. Sign the resulting bytes with the publisher's Ed25519 private key.
-5. Place the resulting signature (base64) in `signature.value`.
+5. Construct the `signature` object: place the signature (base64) in `signature.value`, with `signature.algorithm` = `"ed25519"` and `signature.signed_over` = `"canonical-json-v1-excluding-signature-and-timestamp"`.
+
+Note: because the entire `signature` field is `null` in the signed bytes, `signature.algorithm` and `signature.signed_over` are not themselves covered by the signature. In this version both are fixed single values (see the schema), so this carries no practical risk; a future version introducing algorithm agility will bind them explicitly.
 
 ### 6.3 Signature verification
 
 To verify:
 
-1. Take the manifest as received.
-2. Set `signature.value` to `null` and `timestamp` (entire object) to `null`.
-3. Compute the canonical serialization.
-4. Verify the Ed25519 signature (`signature.value` from the received manifest) against the canonical bytes using the publisher's public key from `publisher.public_key`.
+1. Take the manifest as received; retain the received `signature.value` for step 4.
+2. Set the entire `signature` field and the entire `timestamp` field to `null`, leaving `manifest_id` populated.
+3. Compute the canonical serialization per §6.1.
+4. Verify the retained Ed25519 signature against the canonical bytes using the publisher's public key from `publisher.public_key`.
+
+### 6.4 Manifest assembly and computation order
+
+A manifest commits to itself with three distinct SHA-256 computations, each taken over the canonical serialization (§6.1) of the manifest in a specific fill-state. Because each covers a different set of populated fields, they MUST be performed in this order:
+
+1. **Build the unsigned skeleton.** Populate every field the manifest will carry *except* `manifest_id`, `signature`, and `timestamp`; set those three to `null`.
+2. **Derive `manifest_id` (§3.2).** Canonicalize the skeleton (all three fields `null`), SHA-256 it, base32-encode (RFC 4648, uppercase, no padding), take the first 26 characters, and set `manifest_id` to `urn:otp:<that value>`.
+3. **Sign (§6.2).** With `manifest_id` populated and `signature`/`timestamp` set to `null`, canonicalize, sign, and construct the `signature` object.
+4. **Timestamp (§7).** With `manifest_id` and `signature` populated and `timestamp` still `null`, canonicalize and SHA-256 to obtain `anchored_hash`, submit it to OpenTimestamps, and construct the `timestamp` object.
+
+Fields populated (P) versus `null` (∅) in the bytes hashed at each step:
+
+| Computation | `manifest_id` | `signature` | `timestamp` |
+|---|:---:|:---:|:---:|
+| `manifest_id` derivation (step 2) | ∅ | ∅ | ∅ |
+| signature (step 3) | P | ∅ | ∅ |
+| `anchored_hash` (step 4) | P | P | ∅ |
+
+Verification reverses these: recompute `manifest_id` with all three fields `null`; verify the signature with `signature` and `timestamp` `null` and `manifest_id` populated (§6.3); reconstruct `anchored_hash` with only `timestamp` `null` (§7.2).
 
 ## 7. Timestamp anchoring
 
-Timestamp proofs use **OpenTimestamps**, which anchors SHA-256 hashes to the Bitcoin blockchain via aggregation servers.
+The `timestamp` object records a **timestamp anchor**: a proof that the manifest existed by a certain time, committed to a public ledger. The anchor is backend-selectable via `timestamp.algorithm`; this version defines exactly one backend, `"opentimestamps"`, which anchors SHA-256 hashes to the Bitcoin blockchain via OpenTimestamps aggregation servers. (Alternative backends — additional chains, multi-anchor manifests — are noted as future work in §10; they would add algorithms without changing the reconciliation requirement below.) The prose below says "Bitcoin block" where it reports a concrete OpenTimestamps attestation; the general concept is "anchor."
 
 ### 7.1 Timestamp computation
 
@@ -263,7 +315,7 @@ To timestamp a signed manifest:
 2. Compute the canonical serialization per §6.1.
 3. Compute SHA-256 of those bytes; this is the `anchored_hash`.
 4. Submit `anchored_hash` to an OpenTimestamps aggregator (e.g., `https://alice.btc.calendar.opentimestamps.org`).
-5. Receive an unupgraded `.ots` proof (pending Bitcoin confirmation).
+5. Receive an unupgraded `.ots` proof (pending — not yet anchored in a block).
 6. Base64-encode the `.ots` proof and populate `timestamp.ots_proof`.
 7. Populate `timestamp.anchored_hash` with the hash from step 3.
 8. After ~1 hour (approximately 6 Bitcoin blocks), fetch an upgraded `.ots` proof and replace `timestamp.ots_proof`. The upgraded proof includes the Bitcoin block that anchors the commitment.
@@ -272,13 +324,26 @@ The manifest is now fully signed and timestamped.
 
 ### 7.2 Timestamp verification
 
-To verify:
+Verification has two parts: an **offline reconciliation** that binds the proof to *this* manifest (requires nothing but the manifest), and an optional **anchor confirmation** against the ledger that establishes the actual time.
+
+**Offline reconciliation (normative — a verifier MUST perform all of these):**
 
 1. Reconstruct the `anchored_hash` per §7.1 steps 1-3.
-2. Confirm it matches `timestamp.anchored_hash`.
-3. Decode the base64 OTS proof from `timestamp.ots_proof`.
-4. Verify the OTS proof against a Bitcoin full node (or a trusted Bitcoin block header source). This yields a Bitcoin block height and timestamp.
-5. The manifest is proven to have existed at or before that Bitcoin block time.
+2. Confirm it equals `timestamp.anchored_hash`. If not, the timestamp is invalid.
+3. Decode the base64 proof from `timestamp.ots_proof` and parse it. If it does not decode or parse as a valid OpenTimestamps proof, the timestamp is **invalid**.
+4. **Confirm the proof commits to the reconstructed `anchored_hash`** — that is, the digest the proof timestamps MUST equal the `anchored_hash` from step 1. A proof that commits to any other digest does not attest *this* manifest, and the timestamp is invalid regardless of whether that other proof is itself validly anchored. *(This is the reconciliation that closes the "attach an unrelated but validly-anchored proof" hole. It is new and normative in v0.2.)*
+5. Read the proof's anchor state:
+   - **pending** — the proof carries only a calendar commitment; no ledger block yet. Run the upgrade step (§7.1 step 8) later.
+   - **upgraded** — the proof carries a concrete ledger attestation (for the `opentimestamps` backend, a Bitcoin block-header attestation naming a block height).
+
+A manifest whose timestamp fails steps 2–4 MUST be treated as having an **invalid** timestamp — a conformant verifier MUST NOT report such a manifest as validly timestamped.
+
+**Anchor confirmation (establishes the time; requires ledger data):**
+
+6. To learn the actual anchor time, verify the upgraded proof against a Bitcoin full node **or** a trusted Bitcoin block-header source: confirm the block at the attested height carries the merkle root the proof commits to. This yields the block height and time.
+7. The manifest is then proven to have existed at or before that block time.
+
+A verifier that performs steps 1–5 but not 6–7 has established that the proof authentically commits to this manifest and names an anchor, but has **not** confirmed the anchor against the ledger; it MUST report this state honestly (e.g. "anchor attested, not confirmed against block headers") and MUST NOT claim a confirmed time. Steps 6–7 need a full node or a *named* trusted header source — a verifier MUST NOT silently substitute one.
 
 ## 8. Trust model — what is proven vs trusted vs out of scope
 
@@ -290,7 +355,7 @@ Given a valid manifest, a verifier can prove:
 
 1. **The corpus content matches the manifest.** Recomputing `corpus_hash` from the actual corpus files yields the same hash.
 2. **The manifest was signed by the holder of the publisher's private key.** The signature verifies against `publisher.public_key`.
-3. **The manifest existed by a specific Bitcoin block time.** The OpenTimestamps proof anchors the manifest hash to Bitcoin.
+3. **The manifest existed by a specific anchor time.** The timestamp proof commits *this* manifest's `anchored_hash` to a public ledger. Offline reconciliation (§7.2 steps 1–5) proves the proof authentically attests this manifest and names its anchor; confirming the anchor against Bitcoin block headers (§7.2 steps 6–7) establishes the specific block time. The time guarantee is only as strong as that confirmation — an unconfirmed anchor names a block but does not yet prove the time.
 
 These three facts are cryptographic. They can be re-verified by anyone, at any time, without trusting the publisher.
 
@@ -319,7 +384,7 @@ The following problems are **not addressed** by this spec, and any implementatio
 
 The following legitimate criticisms of this spec are acknowledged:
 
-- **Publisher key compromise.** If a publisher's private key is stolen, an attacker can produce manifests indistinguishable from legitimate ones. Key rotation is not addressed in v0.1.
+- **Publisher key compromise.** If a publisher's private key is stolen, an attacker can produce manifests indistinguishable from legitimate ones. Key rotation is not addressed in this version.
 - **Sybil publishers.** Anyone can generate an Ed25519 key. Publisher reputation is out of scope for the cryptographic layer.
 - **False description.** A publisher can honestly commit to a corpus and lie about what's in it. Only third-party inspection of the corpus can reveal this.
 - **Timestamp aggregator compromise.** OpenTimestamps aggregators can (in principle) delay or refuse to include hashes. Bitcoin's write ordering cannot be manipulated by aggregators. If an aggregator is unavailable, the publisher can use a different one.
@@ -334,11 +399,11 @@ The full procedure a verifier follows for a manifest:
 2. **Fetch the corpus** via `links.corpus_url` or `links.corpus_mirror_urls`.
 3. **Recompute `corpus_hash`** per §5. Confirm it equals `corpus.corpus_hash`.
 4. **Verify the signature** per §6.3.
-5. **Verify the timestamp proof** per §7.2. Record the Bitcoin block time as the "proven by" time.
+5. **Verify the timestamp** per §7.2: perform the offline reconciliation (§7.2 steps 1–5, including confirming the proof commits to the reconstructed `anchored_hash`), then, if a full node or named header source is available, confirm the anchor (§7.2 steps 6–7) and record the block time as the "proven by" time. A manifest with an **invalid** timestamp (§7.2) is not validly timestamped and MUST NOT be reported as such.
 6. **Inspect the claims.** Read `claims.license`, `claims.consent_statement`, `claims.description`. These are publisher assertions; evaluate accordingly.
 7. **Optionally cross-check the publisher.** The publisher's `public_key` and `contact` can be validated against external sources (GitHub key, DNS TXT record, DID resolver, etc.).
 
-A manifest that passes steps 1-5 is **cryptographically valid**. A manifest whose claims a verifier chooses to trust based on step 6-7 is **socially trusted**. These are distinct properties.
+A manifest that passes steps 1-5 is **cryptographically valid** (its corpus, signature, and timestamp authentically attest one another) — though if its anchor is unconfirmed, the *time* is named but not yet ledger-confirmed. A manifest whose claims a verifier chooses to trust based on steps 6-7 is **socially trusted**. These are distinct properties.
 
 ## 10. Open questions
 
@@ -355,13 +420,12 @@ Open a Discussion or issue on the [spec repository](https://github.com/open-trai
 
 ## 11. Versioning
 
-This spec follows semver:
+Two version numbers are tracked separately:
 
-- **Patch** (0.1.x): editorial clarifications only. No wire-format changes.
-- **Minor** (0.x): backward-compatible additions (new optional fields, new algorithms via feature negotiation).
-- **Major** (x.0): backward-incompatible changes. Prior manifest versions remain valid indefinitely.
+- The **spec-document version** (this document's header) advances whenever the specification text changes — including new verification requirements or clarifications that do not alter the manifest byte layout. It follows semver: **patch** = editorial only; **minor** = backward-compatible additions, new algorithms via feature negotiation, or newly-required verification obligations that every honest manifest already satisfies; **major** = backward-incompatible changes.
+- The **wire-format version** (`spec_version` inside each manifest) changes only when the manifest byte layout or parser changes, so clients can select the appropriate parser. It is `"0.1"` and is unchanged in this v0.2 document.
 
-Manifests carry `spec_version` to allow clients to select the appropriate parser.
+**v0.2** is a minor document revision over the unchanged 0.1 wire format. Its one behavior-affecting normative addition — the §7.2 `anchored_hash` reconciliation — only ever *rejects* manifests whose proof does not attest them; every honest v0.1 manifest remains valid. Prior manifest versions remain valid indefinitely. All changes are recorded in [CHANGELOG.md](./CHANGELOG.md), which separates normative from editorial changes.
 
 ## 12. References
 
@@ -380,7 +444,7 @@ Manifests carry `spec_version` to allow clients to select the appropriate parser
 
 **Why OpenTimestamps?** Free, permissionless, anchored to Bitcoin (the most secure timestamping backbone available), no operator to pay or trust beyond the Bitcoin network itself.
 
-**Why sorted-file-list SHA-256 instead of Merkle tree?** Simplicity. v0.1 optimizes for inspectability and dependency-free verification. v0.2 will add Merkle-tree hashing for partial-verification workflows.
+**Why sorted-file-list SHA-256 instead of Merkle tree?** Simplicity. This version optimizes for inspectability and dependency-free verification. A future version will add Merkle-tree hashing for partial-verification workflows.
 
 **Why not IPFS CIDs?** IPFS CIDs are excellent but introduce a dependency on the IPFS protocol version. This spec keeps the hash format self-contained. A future version may add an optional `corpus_cid` field for IPFS interoperability.
 
