@@ -21,6 +21,16 @@ A minimal, honest primitive for making verifiable claims about AI training datas
 - Not a license enforcement mechanism. The spec records license claims; enforcement remains a legal question.
 - Not a curation layer. Anyone can publish a manifest; quality and trustworthiness of the underlying claims are downstream questions.
 
+## Verify the example
+
+The repo ships a **real, Bitcoin-anchored** example manifest (not a placeholder). With the reference implementation:
+
+```
+otp verify examples/manifest.example.json --corpus examples/example-corpus
+```
+
+Its timestamp anchors to **Bitcoin block 957,265** (viewable at [mempool.space](https://mempool.space/block/957265)) and commits to that exact manifest. Full walkthrough in [`examples/`](./examples/).
+
 ## Why this exists
 
 AI training data provenance is broken. Every model release claims "trained on our internal corpus" or "public web data" and nobody can independently verify. As the AI industry moves toward regulatory frameworks (EU AI Act Article 10) that require training-data governance, and as decentralized training becomes real (Nous Psyche, Prime Intellect INTELLECT-1/2, Bittensor SN13), we need an open standard for making cryptographically verifiable claims about datasets — one that's honest about what it can and can't prove.

@@ -1,6 +1,6 @@
 {
   "spec_version": "0.1",
-  "manifest_id": "urn:otp:PLACEHOLDER22222222222222",
+  "manifest_id": "urn:otp:7HYHHFNC5THDWDZUQU3TF324ZV",
   "corpus": {
     "corpus_hash": "sha256:f912628de77e191ffe14eb4a8f4cbd14acb708e2de10f5ca45956393438f18c4",
     "hash_algorithm": "otp-file-list-sha256-v1",
@@ -10,7 +10,7 @@
     "description": "Worked-example corpus for the OpenTrainingProvenance spec. Two plain-text files plus a README. No training utility."
   },
   "publisher": {
-    "public_key": "ed25519:PLACEHOLDER_PUBLIC_KEY_BASE64_REPLACE_WITH_REAL_KEY",
+    "public_key": "ed25519:T1kksLiSmy5T6nGkvkA/gRSB+8Lze84aJKhuZad16CE=",
     "key_type": "ed25519",
     "name": "OpenTrainingProvenance Example Publisher",
     "contact": "https://github.com/open-training-provenance/spec"
@@ -23,21 +23,24 @@
     "jurisdiction": "US-CA",
     "consent_statement": "Files created by the OpenTrainingProvenance spec authors specifically as spec-example artifacts. No third-party data.",
     "purpose": "other",
-    "created_at": "2026-07-08T18:30:00Z",
+    "created_at": "2026-07-09T00:00:00Z",
     "contributors": [
-      {"name": "OpenTrainingProvenance Contributors", "role": "example authors"}
+      {
+        "name": "OpenTrainingProvenance Contributors",
+        "role": "example authors"
+      }
     ],
-    "notes": "This is a demonstration manifest. The signature and timestamp fields contain placeholder values. A real manifest requires a real Ed25519 signature and a real OpenTimestamps proof — see SPEC.md §6-7. When the reference implementation library ships, this example will be regenerated with real cryptographic material."
+    "notes": "Real signed + Bitcoin-anchored example manifest produced by the otp-manifests reference implementation (spec v0.2)."
   },
   "signature": {
     "algorithm": "ed25519",
-    "value": "PLACEHOLDER_SIGNATURE_BASE64_WILL_BE_REPLACED_WHEN_REFERENCE_IMPLEMENTATION_SHIPS",
+    "value": "PFOuKNbmpxAAdMWc1xx1nHUncPSJYWknd01gJQFy0VKjyI2wXUQAQtGdAOzDkI1x4RvWiBe2haHe9YBvU8g5Cg==",
     "signed_over": "canonical-json-v1-excluding-signature-and-timestamp"
   },
   "timestamp": {
     "algorithm": "opentimestamps",
-    "ots_proof": "PLACEHOLDER_OTS_PROOF_BASE64_WILL_BE_REPLACED_WHEN_REFERENCE_IMPLEMENTATION_SHIPS",
-    "anchored_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+    "ots_proof": "AE9wZW5UaW1lc3RhbXBzAABQcm9vZgC/ieLohOiSlAEITvg7UvhmYnFC/mif4l+TTwknwEVHClwMGHXe6pw9JpTwCLuN5PSigoeeCPAQ69LAa8IWPvkdRz0VpJdhzAjwILmcvQWwsmURs9OT0NqmxSnAW6aIi0J+MQHADbr0llK+CPAgeUWLT9bI3SuffTiIOENKFIGMrhRvvtwAJFljAR1gYYAI8QRqTzDM8AgZTwXOhXXL8f8Ag9/jDS75DI4uLWh0dHBzOi8vYWxpY2UuYnRjLmNhbGVuZGFyLm9wZW50aW1lc3RhbXBzLm9yZwjxICmR0K43fKON4jrgWwdH2dkP6bbjQaLbNtkoXtcU5AVuCPAglZL70ImrrMcL9w5H129tTccnPlWJqa1uVKW/HppPBLMI8CA8iY7+tVGWrBK6sDM+zujOg+MIDEWAz9j9WUDPn22jXQjxIJZYy2Wn1jhdSthF8K3LQowodhW9546X2++V8nDz1DtQCPAgdN2DcePXFCB+hEoHdIezSjsTGgnfzWU5/iHc+CmVfPgI8SBrfs2VHNe0EsY779cYetgzFv0Yq4BoNVHRsJ8fdR5WxQjxINCnDGEN92zWRyslYUyOV47GIOwHwrifbEth7B9LhbHKCPEgHIIGjC3DsG66Oqie/OVSPfz6IS6IbUlDHUj5OV8YAYQI8CCFXSQen4lzufSd92uP9s6Uh3WGEWKThsay/d6ZP+rt+gjwIOUdGI9o0U0DDeNerMdGFGETBvifWl6jguItT5K0r6+9CPAgKmfkm9Fg7MCOQ0nUdnkiMb5IMts/uvNohsNvLmPN4rsI8SBZObdw/JfQ5lH+uVV/GN0ET0Ha0vCNIMGm+16NO15EhAjxWQEAAAABJSsTZPF3nLf4EOdsadsEG7tKTaVsP2WFqbl0taC+4f4AAAAAAP7///8CpmwAAAAAAAAWABQI2C/4jyeqcubF+n+cCQOQ3/BXnwAAAAAAAAAAImog8ARQmw4ACAjwIHVu7hfA/hWJIt1oCfsql2c8waUT/VEXe41WSO4zkPd6CAjwIDORFk8jmqfpUpCdC4u+a7H5zYOX2RbLBppdC1McAa1UCAjxIGx4FV+tRSRKd46hl+xedqGHNFIZDp7PNzlD1gW8WNUxCAjxIFahGUt9jgCFCfr+YPnvZqfDD+G58pPpZ6jKGZCBelS5CAjwIIjALDiYKqx1ob4mS44OeS8HxR9Tfa6I6wXqJczsbwGDCAjwIL+pCMSbRegTGSsEYLkNJfzUeR928rdSmzhmumQthQHHCAjxIMhlqZRApa57KzwA/MXhLAPhArw91rh82sSlkrN/ZywwCAjxIPpxr0wXUCRYBL3J6YR3NqF5iHNtYttwHn7RX+TCPuMoCAjwINA2rrLEhDGish/UqWSqanysksG1lvJJyZUgQyA3QnsWCAjwIGKbKF4fwozKlF7F6LjOsyqueNXlEjQyaCKk3QYmO/7ZCAjwIH86ZcAlRjT/Ol5MxPj8BPaDWoofr2JXr/Hwd+jGC5/PCAjwIEBRbrMj8U5JRdYtEmdEX0/g51lNJy8XewRBGa4GjrgJCAjwIGFajiH+5DOJGlwbf0D18MODRhYYIb5oocj45+hYm+9UCAgABYiWDXPXGQED0bY6",
+    "anchored_hash": "sha256:4ef83b52f866627142fe689fe25f934f0927c045470a5c0c1875deea9c3d2694",
     "block_height": null,
     "block_time": null
   },
