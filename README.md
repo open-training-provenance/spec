@@ -33,6 +33,8 @@ This spec inherits from the pre-blockchain provenance work — Haber & Stornetta
 - [`schema/manifest.v0.1.schema.json`](./schema/manifest.v0.1.schema.json) — JSON Schema for automated validation
 - [`examples/`](./examples/) — a worked example manifest and its corpus
 - [`docs/trust-model.md`](./docs/trust-model.md) — extended discussion of what's proven vs trusted
+- [`docs/related-work.md`](./docs/related-work.md) — prior art (incl. DataLedger) and adjacent standards, and how OTP relates
+- [`CHANGELOG.md`](./CHANGELOG.md) — spec changes by version, normative vs editorial
 - [`CONTRIBUTING.md`](./CONTRIBUTING.md) — how to propose changes
 
 ## Status and roadmap
